@@ -45,6 +45,17 @@ jobs:
       - name: Add the iOS platform
         run: npx cap add ios
 
+      - name: Configure Podfile for static Firebase linkage
+        run: |
+          # Firebase's iOS SDK requires static linkage when built via
+          # CocoaPods — plain `use_frameworks!` causes Swift module
+          # emission failures for FirebaseCoreInternal/GoogleUtilities/etc.
+          # (exactly the "SwiftEmitModule ... FirebaseCoreInternal" error).
+          # `cap add ios` regenerates this file every run, so it has to be
+          # patched here rather than committed.
+          sed -i '' "s/use_frameworks!/use_frameworks! :linkage => :static/" ios/App/Podfile
+          grep -n "use_frameworks!" ios/App/Podfile
+
       - name: Add Firebase config (Auth) if present
         run: |
           if [ -f "firebase/GoogleService-Info.plist" ]; then
