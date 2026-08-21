@@ -1,0 +1,1031 @@
+/* ==========================================================================
+   UrgeAway — Design Tokens
+   "Don't fight the moment. Shift it."
+   A wave that gets redirected, not stopped. That idea drives the whole
+   visual system: a signature wavy line that runs calm on the home screen,
+   and physically reshapes into a slow breathing circle the moment someone
+   taps "I have an urge" — the shift is something you watch happen.
+   ========================================================================== */
+
+:root {
+  /* Color — dark (default) */
+  --bg-0: #060b14;          /* deepest background */
+  --bg-1: #0c1626;          /* app background */
+  --bg-2: #121e33;          /* card surface */
+  --bg-3: #1a2b45;          /* raised surface / pressed */
+  --line: rgba(148, 178, 210, 0.14);
+
+  --cyan: #34e0d6;
+  --cyan-dim: #1fa89f;
+  --cyan-glow: rgba(52, 224, 214, 0.35);
+  --green: #8be3a8;
+  --green-dim: #4fb87a;
+  --amber: #f2c572;
+  --coral: #ef8b6f;         /* used sparingly — echoes the "urge" wave in the mark */
+
+  --text-0: #f4f9fb;
+  --text-1: #c3d3e4;
+  --text-2: #7f93ac;
+  --text-3: #56657c;
+
+  --bg-tabbar: rgba(10, 17, 30, 0.92);
+
+  /* Fixed "focus mode" tokens — Urge Mode and the Activity Runner (games +
+     outcome check-in) intentionally stay on this calm dark palette in BOTH
+     themes, so these never change under [data-theme="light"]. This keeps
+     that flow's text guaranteed-readable regardless of the person's
+     light/dark setting. */
+  --focus-bg-0: #060b14;
+  --focus-bg-2: #121e33;
+  --focus-bg-3: #1a2b45;
+  --focus-line: rgba(148, 178, 210, 0.14);
+  --focus-text-0: #f4f9fb;
+  --focus-text-1: #c3d3e4;
+  --focus-text-2: #7f93ac;
+  --focus-cyan: #34e0d6;
+  --focus-green: #8be3a8;
+  --focus-coral: #ef8b6f;
+
+  /* Type */
+  --font-display: -apple-system, "SF Pro Rounded", "Segoe UI Rounded", system-ui, sans-serif;
+  --font-body: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", "Roboto Mono", ui-monospace, monospace;
+
+  /* Scale */
+  --radius-s: 12px;
+  --radius-m: 18px;
+  --radius-l: 26px;
+  --radius-full: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-glow: 0 0 0 1px rgba(52, 224, 214, 0.18), 0 12px 40px -8px rgba(52, 224, 214, 0.3);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- Light theme ----------
+   Toggled via [data-theme="light"] on <html>, set from Settings > Appearance.
+   Warm, editorial neutrals (not blue-tinted grays) with a deep jade-teal
+   accent and muted terracotta — closer to what a considered, paid app
+   looks like than a default "inverted dark mode."
+   The urge flow / activity runner intentionally stays on the dark palette
+   in both themes — see the --focus-* tokens above, which this block never
+   touches — that's the app's calming "focus mode," not a bug. */
+[data-theme="light"] {
+  --bg-0: #faf8f4;
+  --bg-1: #f5f1ea;
+  --bg-2: #ffffff;
+  --bg-3: #eee8de;
+  --line: rgba(45, 35, 25, 0.09);
+
+  --cyan: #0f7b6c;
+  --cyan-dim: #0b5f53;
+  --cyan-glow: rgba(15, 123, 108, 0.16);
+  --green: #4c8c58;
+  --green-dim: #3c6f46;
+  --amber: #b8862b;
+  --coral: #c1613f;
+
+  --text-0: #221e19;
+  --text-1: #4e463c;
+  --text-2: #7c7364;
+  --text-3: #a79c8a;
+
+  --shadow-card: 0 4px 18px rgba(40, 30, 15, 0.07);
+  --shadow-glow: 0 0 0 1px rgba(15, 123, 108, 0.14), 0 12px 32px -10px rgba(15, 123, 108, 0.22);
+
+  --bg-tabbar: rgba(255, 255, 255, 0.90);
+}
+
+body, #app-shell, .card, .btn, .toggle { transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-1);
+  color: var(--text-0);
+  font-family: var(--font-body);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+}
+
+#app-shell {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1200px 480px at 50% -10%, rgba(52, 224, 214, 0.08), transparent 60%),
+    var(--bg-1);
+}
+
+/* The actual page content. This is the piece that was missing: without it,
+   #screen-container never stretched to fill the app, so on short pages the
+   tab bar just sat wherever the content ended instead of at the real
+   bottom of the screen, leaving a dead gap below it. With this in place,
+   .screen's flex:1 has something to fill, so short pages stretch properly
+   and the tab bar always lands at the true bottom — no "sticky"/fixed
+   positioning needed for that anywhere. */
+#screen-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+img, svg { display: block; }
+button { font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* whole-screen transition when switching tabs */
+.screen-transition {
+  animation: screenIn 0.28s var(--ease);
+}
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Layout scaffolding ---------- */
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0) 0 0 0;
+  min-height: 0;
+}
+
+.screen-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-5) var(--space-5) var(--space-7);
+}
+
+/* Home / Activities / Progress / Journal use this instead of
+   .screen-scroll: the page itself never scrolls (and so never needs the
+   tab bar pinned in place — it's simply not in a scrolling area). Content
+   on these tabs is sized to fit one screen. Where a list could genuinely
+   grow without bound (journal entries), a small .inner-scroll region
+   inside the page scrolls on its own instead of the whole page. */
+.screen-fixed {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--space-4) var(--space-5) var(--space-4);
+}
+.inner-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.topbar {
+  padding: var(--space-4) var(--space-5) var(--space-2);
+}
+
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  font-weight: 600;
+  margin: 0 0 var(--space-1);
+}
+
+.h1 {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text-0);
+}
+
+.subtitle {
+  color: var(--text-2);
+  font-size: 15px;
+  margin: var(--space-1) 0 0;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.section-title:first-child { margin-top: 0; }
+
+/* ---------- Bottom nav ---------- */
+
+.tabbar {
+  display: flex;
+  border-top: 1px solid var(--line);
+  background: var(--bg-tabbar);
+  backdrop-filter: blur(12px);
+  padding: var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom, 0));
+  z-index: 20;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2) 0;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-s);
+  transition: color 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.tab svg { width: 22px; height: 22px; stroke: currentColor; transition: transform 0.2s var(--ease); }
+.tab.active { color: var(--cyan); }
+.tab.active svg { transform: translateY(-1px) scale(1.06); }
+.tab:active { background: var(--bg-3); transform: scale(0.94); }
+
+/* ---------- Cards & buttons ---------- */
+
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: var(--space-4);
+}
+
+.card-tap {
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), background 0.15s var(--ease);
+}
+.card-tap:active { transform: scale(0.97); background: var(--bg-3); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), opacity 0.15s var(--ease), box-shadow 0.2s var(--ease);
+}
+.btn:active { transform: scale(0.96); }
+
+.btn-primary {
+  background: var(--cyan);
+  color: #04211e;
+  padding: 20px 28px;
+  font-size: 17px;
+  width: 100%;
+}
+.btn-primary:active { background: var(--cyan-dim); }
+
+.btn-secondary {
+  background: var(--bg-3);
+  color: var(--text-0);
+  padding: 14px 20px;
+  font-size: 15px;
+  border: 1px solid var(--line);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-1);
+  padding: 12px 18px;
+  font-size: 14px;
+  border: 1px solid var(--line);
+}
+
+.btn-block { width: 100%; }
+
+/* ---------- Auth screen (Login / Sign Up) ---------- */
+.btn-gradient {
+  background: linear-gradient(90deg, var(--cyan), var(--green));
+  color: #04211e;
+}
+.btn-gradient:active { opacity: 0.85; transform: scale(0.96); }
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  margin-bottom: var(--space-3);
+  padding: 0 14px;
+}
+.auth-input-icon { color: var(--text-2); display: flex; margin-right: 10px; flex-shrink: 0; }
+.auth-input-icon svg { width: 18px; height: 18px; }
+.auth-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-0);
+  font-size: 15px;
+  padding: 14px 0;
+  font-family: var(--font-body);
+}
+.auth-input::placeholder { color: var(--text-3); }
+.auth-eye-btn { background: none; border: none; color: var(--text-2); display: flex; padding: 6px; margin-left: 4px; flex-shrink: 0; }
+.auth-eye-btn svg { width: 18px; height: 18px; }
+
+.auth-forgot { text-align: right; margin-bottom: var(--space-4); }
+.auth-forgot button { background: none; border: none; color: var(--cyan); font-size: 12.5px; font-weight: 600; padding: 0; }
+
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: var(--space-5) 0; color: var(--text-3); font-size: 12px; }
+.auth-divider .line { flex: 1; height: 1px; background: var(--line); }
+
+.auth-switch { text-align: center; margin-top: var(--space-4); font-size: 13px; color: var(--text-2); }
+.auth-switch button { background: none; border: none; color: var(--cyan); font-weight: 700; padding: 0; font-size: 13px; }
+
+.auth-header { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin-bottom: var(--space-5); text-align: center; }
+.auth-header .h1 { font-size: 24px; }
+.auth-header .subtitle { margin: 0; }
+
+/* ---------- The Urge button (home hero) ---------- */
+
+.urge-hero {
+  position: relative;
+  border-radius: var(--radius-l);
+  padding: var(--space-4) var(--space-4);
+  background: radial-gradient(120% 140% at 50% 0%, rgba(52, 224, 214, 0.16), rgba(18, 30, 51, 0.4) 60%), var(--bg-2);
+  border: 1px solid rgba(52, 224, 214, 0.22);
+  overflow: hidden;
+  text-align: center;
+}
+
+.urge-hero .wave-wrap {
+  height: 34px;
+  margin: 0 auto var(--space-3);
+  max-width: 200px;
+}
+
+.urge-btn {
+  width: 100%;
+  padding: 18px 20px;
+  border-radius: var(--radius-l);
+  border: none;
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--green) 140%);
+  color: #04211e;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-glow);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+  animation: pulse-glow 3.2s ease-in-out infinite;
+}
+.urge-btn:active { transform: scale(0.96); }
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(52,224,214,0.18), 0 12px 40px -8px rgba(52,224,214,0.3); }
+  50% { box-shadow: 0 0 0 1px rgba(52,224,214,0.3), 0 16px 52px -6px rgba(52,224,214,0.48); }
+}
+
+.urge-hero .hint {
+  margin-top: var(--space-2);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+/* ---------- Quick option grid ---------- */
+
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.option-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+.option-card {
+  transition: transform 0.15s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.option-card .icon {
+  width: 32px; height: 32px;
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(52, 224, 214, 0.12);
+  color: var(--cyan);
+  transition: transform 0.2s var(--ease);
+}
+.option-card:active .icon { transform: scale(0.9); }
+.option-card .icon svg { width: 17px; height: 17px; }
+.option-card .label { font-weight: 700; font-size: 12.5px; color: var(--text-0); letter-spacing: -0.005em; line-height: 1.25; }
+/* Multiple-choice buttons inside games reuse .option-card as a plain
+   button (no .label wrapper, just text) — needs the fixed focus tokens
+   too, same reason as everything else in this file's .focus-mode rules. */
+.focus-mode .option-card {
+  background: var(--focus-bg-2);
+  border-color: var(--focus-line);
+  color: var(--focus-text-0);
+}
+.focus-mode .option-card .label { color: var(--focus-text-0); }
+
+/* entrance stagger for grids of cards */
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.42s var(--ease) forwards;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up { opacity: 1; animation: none; transform: none; }
+}
+
+/* ---------- Stats ---------- */
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+.stat {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+  transition: border-color 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.stat:active { transform: scale(0.97); }
+.stat .num {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--cyan);
+  line-height: 1;
+}
+.stat .lbl {
+  margin-top: var(--space-2);
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.3;
+}
+
+/* ---------- Urge Mode (full screen takeover) ----------
+   Fixed-dark "focus mode": uses the --focus-* tokens, not the theme
+   tokens, so it always renders the same regardless of light/dark setting
+   (see the note on --focus-* in the :root block). */
+
+.urge-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--focus-bg-0);
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.urge-mode-close {
+  position: absolute;
+  top: calc(var(--space-4) + env(safe-area-inset-top, 0));
+  right: var(--space-4);
+  width: 38px; height: 38px;
+  border-radius: var(--radius-full);
+  background: var(--focus-bg-2);
+  border: 1px solid var(--focus-line);
+  color: var(--focus-text-1);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5;
+}
+
+.urge-mode-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  gap: var(--space-5);
+}
+
+.urge-mode-body .line1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--focus-text-0);
+  max-width: 320px;
+}
+.line1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-0);
+}
+.urge-mode-body .line2 {
+  color: var(--focus-text-2);
+  font-size: 15px;
+}
+
+/* "Remember why" reasons + intensity pills inside Urge Mode also need to
+   stay readable against the fixed-dark background, even though .choice-pill
+   is shared with light-following screens elsewhere (Settings, onboarding). */
+.urge-mode-body { color: var(--focus-text-0); }
+.urge-mode .choice-pill {
+  background: var(--focus-bg-2);
+  border-color: var(--focus-line);
+  color: var(--focus-text-1);
+}
+.urge-mode .choice-pill.selected {
+  background: rgba(52, 224, 214, 0.14);
+  border-color: var(--focus-cyan);
+  color: var(--focus-cyan);
+}
+
+.morph-wrap { width: 220px; height: 220px; }
+
+.urge-choice-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  padding: 0 var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom, 0));
+}
+
+.urge-choice {
+  background: var(--focus-bg-2);
+  border: 1px solid var(--focus-line);
+  border-radius: var(--radius-m);
+  padding: var(--space-4);
+  color: var(--focus-text-0);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.urge-choice .t { font-weight: 700; font-size: 15px; }
+.urge-choice .d { font-size: 12px; color: var(--text-2); }
+.urge-choice.wide { grid-column: 1 / -1; }
+.urge-choice.random {
+  background: linear-gradient(135deg, rgba(52,224,214,0.14), rgba(139,227,168,0.10));
+  border-color: rgba(52,224,214,0.3);
+}
+
+/* ---------- Activity runner ---------- */
+
+.activity-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: var(--bg-0);
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+/* Games + the urge outcome check-in (.focus-mode, see flows.js) are meant
+   to stay on the fixed dark palette regardless of theme — this was the
+   actual bug: the container background was still following the theme
+   (so it went white in light mode) while the text inside it was already
+   hardcoded to the fixed light-on-dark tokens, making it invisible. */
+.activity-screen.focus-mode {
+  background: var(--focus-bg-0);
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--space-4) + env(safe-area-inset-top,0)) var(--space-4) var(--space-2);
+}
+.activity-header .title { font-weight: 700; font-size: 15px; color: var(--text-1); }
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  display: flex; align-items: center; justify-content: center;
+}
+/* Games/urge flow keep their header readable against the fixed-dark
+   focus-mode background regardless of the app's light/dark setting. */
+.focus-mode .activity-header .title { color: var(--focus-text-1); }
+.focus-mode .icon-btn {
+  background: var(--focus-bg-2);
+  border-color: var(--focus-line);
+  color: var(--focus-text-1);
+}
+
+.activity-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  gap: var(--space-5);
+  text-align: center;
+}
+
+.activity-footer {
+  padding: var(--space-4) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom,0));
+}
+
+/* generic game grid */
+.game-grid {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.tap-target {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: var(--radius-m);
+  border: none;
+  cursor: pointer;
+}
+
+.big-number {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--focus-text-0);
+}
+
+.prompt-text {
+  font-size: 18px;
+  color: var(--focus-text-0);
+  font-weight: 600;
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.timer-pill {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--focus-cyan);
+  background: rgba(52,224,214,0.1);
+  border: 1px solid rgba(52,224,214,0.24);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+}
+
+.feedback-flash {
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 20px;
+}
+.feedback-flash.good { color: var(--green); }
+.feedback-flash.bad { color: var(--coral); }
+/* Games run inside the fixed-dark focus mode — keep feedback readable there
+   regardless of the app's light/dark setting. */
+.focus-mode .feedback-flash.good { color: var(--focus-green); }
+.focus-mode .feedback-flash.bad { color: var(--focus-coral); }
+
+/* Ghost/secondary buttons have no theme-independent background of their
+   own, so inside the fixed-dark focus mode they need the focus tokens too
+   — otherwise light-mode text renders dark-on-dark and disappears. */
+.focus-mode .btn-ghost, .urge-mode .btn-ghost {
+  color: var(--focus-text-1);
+  border-color: var(--focus-line);
+}
+.focus-mode .btn-secondary, .urge-mode .btn-secondary {
+  background: var(--focus-bg-3);
+  color: var(--focus-text-0);
+  border-color: var(--focus-line);
+}
+
+/* breathing circle */
+.breath-circle-wrap {
+  width: 220px; height: 220px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.breath-circle {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(139,227,168,0.9), rgba(52,224,214,0.55) 60%, rgba(52,224,214,0.15) 100%);
+  box-shadow: 0 0 60px 10px rgba(52,224,214,0.25);
+  transition: transform 4s cubic-bezier(0.45, 0, 0.55, 1);
+}
+.breath-label {
+  position: absolute;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  color: #04211e;
+}
+
+/* outcome check-in */
+.outcome-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  width: 100%;
+}
+.outcome-btn {
+  background: var(--focus-bg-2);
+  border: 1px solid var(--focus-line);
+  border-radius: var(--radius-m);
+  padding: var(--space-4);
+  color: var(--focus-text-0);
+  font-weight: 700;
+  font-size: 14.5px;
+}
+.outcome-btn:active { background: var(--bg-3); }
+
+/* ---------- Journal ---------- */
+
+.prompt-chip {
+  display: inline-block;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  padding: 6px 12px;
+  font-size: 11.5px;
+  color: var(--text-1);
+  margin: 0 6px 6px 0;
+}
+
+textarea.journal-input {
+  width: 100%;
+  min-height: 160px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  color: var(--text-0);
+  padding: var(--space-4);
+  font-size: 15px;
+  font-family: var(--font-body);
+  resize: vertical;
+  line-height: 1.5;
+}
+textarea.journal-input:focus {
+  outline: none;
+  border-color: var(--cyan-dim);
+}
+/* Note/answer boxes inside games and the urge flow's outcome screen also
+   live on the fixed-dark focus-mode background. */
+.focus-mode textarea.journal-input, .urge-mode textarea.journal-input {
+  background: var(--focus-bg-2);
+  border-color: var(--focus-line);
+  color: var(--focus-text-0);
+}
+.focus-mode textarea.journal-input:focus, .urge-mode textarea.journal-input:focus {
+  border-color: var(--focus-cyan);
+}
+
+.entry-card {
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) 0;
+}
+.entry-card:last-child { border-bottom: none; }
+.entry-date { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
+.entry-prompt { font-size: 11.5px; color: var(--cyan); font-weight: 600; margin-bottom: 3px; }
+.entry-text { font-size: 13px; color: var(--text-1); line-height: 1.4; white-space: pre-wrap; }
+.entry-text.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+/* ---------- Settings / list rows ---------- */
+
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.list-row:last-child { border-bottom: none; }
+.list-row .label { font-size: 15px; color: var(--text-0); font-weight: 600; }
+.list-row .desc { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+
+/* ---------- Settings menu (category rows that drill into sub-screens) ---------- */
+
+.settings-menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.settings-menu-row:last-child { border-bottom: none; }
+.settings-menu-icon {
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-s);
+  display: flex; align-items: center; justify-content: center;
+}
+.settings-menu-icon svg { width: 18px; height: 18px; }
+.settings-menu-text { flex: 1; min-width: 0; }
+.settings-menu-text .label { font-size: 14.5px; color: var(--text-0); font-weight: 600; }
+.settings-menu-text .desc { font-size: 12px; color: var(--text-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-menu-chevron { color: var(--text-3); flex-shrink: 0; display: flex; }
+.settings-menu-chevron svg { width: 18px; height: 18px; }
+
+.toggle {
+  width: 46px; height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  position: relative;
+  cursor: pointer;
+}
+.toggle.on { background: var(--cyan-dim); border-color: var(--cyan); }
+.toggle .knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s var(--ease);
+}
+.toggle.on .knob { transform: translateX(18px); }
+
+/* ---------- Onboarding ---------- */
+
+.onboard {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg-0);
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.onboard-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-6);
+  text-align: center;
+  gap: var(--space-4);
+}
+.onboard-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding-bottom: var(--space-4);
+}
+.onboard-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bg-3); }
+.onboard-dot.active { background: var(--cyan); width: 20px; border-radius: var(--radius-full); transition: all 0.25s var(--ease); }
+.onboard-footer { padding: var(--space-4) var(--space-6) calc(var(--space-6) + env(safe-area-inset-bottom,0)); display: flex; gap: var(--space-3); }
+
+.choice-pill {
+  padding: 12px 16px;
+  border-radius: var(--radius-full);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.choice-pill.selected { background: rgba(52,224,214,0.14); border-color: var(--cyan); color: var(--cyan); }
+.choice-wrap { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* ---------- Toast ---------- */
+/* ---------- Highlight pulse (points at a specific settings row) ---------- */
+.highlight-pulse {
+  animation: highlightPulse 1s ease-in-out 3;
+  border-radius: var(--radius-m);
+}
+@keyframes highlightPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52,224,214,0); background: transparent; }
+  50% { box-shadow: 0 0 0 6px rgba(52,224,214,0.16); background: rgba(52,224,214,0.08); }
+}
+
+/* ---------- Notification banner (Home) ---------- */
+.notif-banner {
+  background: linear-gradient(135deg, rgba(52,224,214,0.14), rgba(139,227,168,0.08));
+  border: 1px solid rgba(52,224,214,0.28);
+  border-radius: var(--radius-m);
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.notif-banner .icon {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: var(--radius-s);
+  background: rgba(52,224,214,0.18);
+  color: var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+}
+.notif-banner .icon svg { width: 15px; height: 15px; }
+.notif-banner .body { flex: 1; min-width: 0; }
+.notif-banner .t { font-weight: 700; font-size: 12.5px; color: var(--text-0); margin-bottom: 2px; }
+.notif-banner .d { font-size: 10.5px; color: var(--text-2); line-height: 1.3; margin-bottom: 6px; }
+.notif-banner .close {
+  background: none; border: none; color: var(--text-3);
+  font-size: 14px; line-height: 1; padding: 2px; flex-shrink: 0;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  color: var(--text-0);
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  font-size: 13.5px;
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+  max-width: 88%;
+  text-align: center;
+}
+.toast.show { opacity: 1; }
+
+/* ---------- Support screen ---------- */
+.support-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.support-card .t { font-weight: 700; font-size: 14.5px; color: var(--text-0); margin-bottom: 4px; }
+.support-card .d { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.notice-box {
+  border: 1px solid rgba(242,197,114,0.3);
+  background: rgba(242,197,114,0.08);
+  border-radius: var(--radius-m);
+  padding: var(--space-4);
+  font-size: 13px;
+  color: var(--amber);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+}
+
+/* util */
+.fade-in { animation: fadeIn 0.3s var(--ease); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.empty-state { text-align: center; padding: var(--space-4) var(--space-4); color: var(--text-2); }
+.empty-state .big { font-size: 32px; margin-bottom: var(--space-2); }
+.hidden { display: none !important; }

@@ -1,0 +1,90 @@
+name: Build iOS App
+
+# Builds UrgeAway for the iOS Simulator in GitHub's cloud whenever you push
+# to main, or whenever you trigger it manually from the Actions tab.
+#
+# IMPORTANT: this produces an UNSIGNED simulator build (no Apple Developer
+# account needed) — good for verifying the project compiles and for
+# dragging into a local Simulator to click through. It is NOT installable
+# on a real iPhone. Apple requires code signing with a paid Apple Developer
+# Program membership ($99/yr) for that, whether you're side-loading to your
+# own device, distributing via TestFlight, or submitting to the App Store.
+# See the "Real device / TestFlight / App Store" section in README.md for
+# how to add signing once you have a Developer account.
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Install project dependencies
+        run: npm install
+
+      - name: Bundle native plugin bridges (notifications, push, auth, screen pinning)
+        run: |
+          npx esbuild www/js/notifications-entry.js --bundle --outfile=www/js/notifications-bundle.js --format=iife
+          npx esbuild www/js/push-entry.js --bundle --outfile=www/js/push-bundle.js --format=iife
+          npx esbuild www/js/auth-entry.js --bundle --outfile=www/js/auth-bundle.js --format=iife
+          npx esbuild www/js/screenpinning-entry.js --bundle --outfile=www/js/screenpinning-bundle.js --format=iife
+
+      - name: Add the iOS platform
+        run: npx cap add ios
+
+      - name: Add Firebase config (Auth) if present
+        run: |
+          if [ -f "firebase/GoogleService-Info.plist" ]; then
+            cp firebase/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+            echo "Firebase iOS config applied."
+          else
+            echo "No firebase/GoogleService-Info.plist found — skipping Firebase setup for this build."
+          fi
+        shell: bash
+
+      - name: Sync web app into the iOS project
+        run: npx cap sync ios
+
+      - name: Generate app icons from resources/icon.png
+        run: npx capacitor-assets generate --ios
+
+      - name: Install CocoaPods dependencies
+        run: cd ios/App && pod install
+
+      - name: Build for the iOS Simulator (unsigned)
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Zip the simulator .app
+        run: |
+          cd ios/App/build/Build/Products/Debug-iphonesimulator
+          # Capacitor's default Xcode target/product is literally named
+          # "App" (App.app) even though the on-device display name is
+          # "UrgeAway" — that's normal, not a bug.
+          zip -r UrgeAway-simulator.zip App.app
+
+      - name: Upload the simulator build so you can download it
+        uses: actions/upload-artifact@v4
+        with:
+          name: UrgeAway-ios-simulator
+          path: ios/App/build/Build/Products/Debug-iphonesimulator/UrgeAway-simulator.zip

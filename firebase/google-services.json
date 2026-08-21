@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "297659522394",
+    "project_id": "scholarix-d9c7c",
+    "storage_bucket": "scholarix-d9c7c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:297659522394:android:c763aaf72f1a7252e96763",
+        "android_client_info": {
+          "package_name": "com.ceeenterprise.UrgeAway"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "297659522394-9q4op0u4mo5updbmj1b3ufrfdj25bt96.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ceeenterprise.UrgeAway",
+            "certificate_hash": "c71fbb771de91f88b1f18f7ba2c0ef19270024df"
+          }
+        },
+        {
+          "client_id": "297659522394-5f1t6u9f9i37kegh68dro4q3ab4gql6i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8mxKBDx46TypaMvhr3P-BOzIwQD9U4Og"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "297659522394-5f1t6u9f9i37kegh68dro4q3ab4gql6i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
