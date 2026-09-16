@@ -4,11 +4,31 @@
 
 An offline-first, privacy-first impulse-management app. This repo is the
 MVP described in the product brief: home screen with the **I HAVE AN URGE**
-button, Urge Mode, 9 distraction/challenge/calm activities, **Urge Lock**
+button, Urge Mode, distraction/challenge/calm activities, **Urge Lock**
 (a Screen-Pinning-backed focus session for the highest-intensity urges), a
-private journal, local history/progress, settings, and onboarding — all
-built in plain HTML/CSS/JS and wired for Capacitor, which is the standard
-low-budget, solo-developer path to a real Android APK.
+private journal, local history/progress, a profile dashboard, notifications,
+settings, and onboarding — all built in plain HTML/CSS/JS and wired for
+Capacitor, targeting both **Android and iOS** from the same `www/` code.
+
+## Android vs iOS
+
+Almost everything in `www/` is shared — same HTML/CSS/JS runs on both
+platforms unchanged. Two things genuinely differ:
+
+- **Google Sign-In is Android-only.** There's no iOS Google auth config in
+  this repo (no reversed-client-id URL scheme, no iOS OAuth client), so the
+  "Continue with Google" button is hidden entirely on iOS
+  (`isIOS()` in `screens.js`) rather than shown and failing. Email/password
+  sign-in works the same on both.
+- **Urge Lock's "keep me in the app" mechanism differs.** Android has a
+  public API (`Activity.startLockTask()`) any app can call — that's
+  `capacitor-plugins/screen-pinning/`. **iOS has no equivalent** — Apple
+  does not let any app lock itself to the screen. Only the person can do
+  that, manually, via Guided Access (Settings → Accessibility → Guided
+  Access, then a triple-click). On iOS, Urge Lock still runs its timer and
+  distraction exactly the same — it just can't force the lock itself, and
+  the copy in `urgelock.js` / the Settings → Urge Lock screen says so
+  plainly instead of implying an in-app "set up" path that doesn't exist.
 
 ## What's actually in here
 
@@ -24,37 +44,65 @@ urgeaway/
 │   │   ├── screens.js       ← Home, Activities, Progress, Journal, Settings
 │   │   ├── flows.js         ← Urge Mode, activity runner, onboarding
 │   │   ├── urgelock.js      ← Urge Lock: confirm step, timed session, check-in
-│   │   ├── screenpinning.js ← wrapper around the native Screen Pinning bridge
+│   │   ├── screenpinning.js ← wrapper around the native Screen Pinning bridge (Android only)
+│   │   ├── account.js       ← sign-in/sign-up (Google hidden on iOS)
+│   │   ├── dashboard.js     ← profile dashboard + notification history
 │   │   └── app.js           ← router / controller
 │   └── icons/                ← app icon generated from your logo, all sizes
 ├── capacitor-plugins/
-│   └── screen-pinning/      ← local Capacitor plugin: Android's Screen
-│       ├── android/            Pinning (App Pinning) APIs on Android,
-│       └── ios/                 Guided Access state on iOS — nothing else
+│   └── screen-pinning/      ← local Capacitor plugin, Android-only: Screen
+│                               Pinning (App Pinning) APIs, nothing else
+├── .github/workflows/
+│   ├── build-apk.yml        ← builds a debug Android APK in the cloud
+│   └── build-ios.yml        ← builds an UNSIGNED iOS Simulator build in the cloud
+├── firebase/
+│   ├── google-services.json      ← Android Firebase config
+│   └── GoogleService-Info.plist  ← iOS Firebase config (add this yourself — see below)
 ├── capacitor.config.json
 ├── package.json
 └── README.md
 ```
+
+### Getting iOS actually onto a phone
+
+`build-ios.yml` produces an **unsigned build for the iOS Simulator only** —
+that's the most CI can do without an Apple Developer account. To get this
+onto a real iPhone or into TestFlight, you need:
+
+1. An Apple Developer Program membership ($99/year)
+2. A signing certificate + provisioning profile for `com.ceeenterprise.UrgeAway`
+3. Either open `ios/App/App.xcworkspace` in Xcode on a Mac and run it
+   directly on a plugged-in device, or provide the cert/profile as GitHub
+   secrets so the workflow can be extended to produce a signed `.ipa` the
+   same way `build-apk.yml` already does for Android
+
+None of that exists yet in this repo — it needs your Apple account, not
+something that can be generated from here.
+
+### Firebase on iOS
+
+If you want Auth/push notifications working on iOS too, download
+`GoogleService-Info.plist` from Firebase Console → Project settings → your
+iOS app, and commit it to `firebase/GoogleService-Info.plist` — same idea
+as `firebase/google-services.json` already does for Android. Push on iOS
+also needs an APNs auth key uploaded to Firebase Console separately
+(Apple-side setup, not something in this repo).
 
 ### Urge Lock
 
 When someone rates an urge 7-10 in Urge Mode's intensity step, UrgeAway
 offers **Urge Lock** instead of the normal distraction loop: a confirmation
 screen, then a timed session (5/8/12/15 minutes for 7/8/9/10) that pins the
-app to the foreground using each platform's own user-facing pinning
-feature — Android's **Screen Pinning / App Pinning**
-(Settings → Security → App pinning), or on iOS, **Guided Access**
-(Settings → Accessibility → Guided Access), which the person must enable
-and triple-click into themselves since Apple gives no third-party app the
-ability to start it programmatically. It's implemented as a small local
-Capacitor plugin (`capacitor-plugins/screen-pinning/`) that, on Android,
+app to the foreground using Android's standard, user-facing **Screen
+Pinning / App Pinning** feature — the same one described at
+Settings → Security → App pinning on stock Android. It's implemented as a
+small local Capacitor plugin (`capacitor-plugins/screen-pinning/`) that
 only calls `Activity#startLockTask()` / `#stopLockTask()` and reads the
-lock-task-mode state, and on iOS only reads `UIAccessibility.isGuidedAccessEnabled`
-— no Device Owner provisioning, ADB, root, Accessibility Service tricks, or
-private iOS APIs, and no ability to block either platform's own exit
+lock-task-mode state — no Device Owner provisioning, ADB, root, or
+Accessibility Service tricks, and no ability to block Android's own exit
 gesture. The countdown is timestamp-based (`endTime - now`, stored in
-`localStorage` alongside everything else), so it survives the app being
-recreated. During the session it reuses the app's existing random
+`localStorage` alongside everything else), so it survives the Activity
+being recreated. During the session it reuses the app's existing random
 distraction system rather than adding a second one.
 
 There is no backend. Nothing is sent over the network at any point —
@@ -122,98 +170,6 @@ to generate a keystore, then `./gradlew assembleRelease`.
 
 Any time you change files in `www/`, re-run `npx cap sync android` before
 rebuilding so the native shell picks up the changes.
-
-## 3. Turn it into a real iOS app
-
-Same idea as Android — Capacitor wraps the same `www/` folder — but Apple's
-tooling only runs on a Mac, and only Apple-signed builds run on a real
-iPhone. There's no way around either of those; it's an Apple platform rule,
-not a limitation of this project.
-
-**Prerequisites**
-- A Mac, with [Xcode](https://apps.apple.com/app/xcode/id497799835) 15+
-  installed (includes the iOS SDK, Simulator, and CocoaPods comes via
-  `sudo gem install cocoapods` if you don't have it)
-- [Node.js](https://nodejs.org) 18+
-- To run on your own iPhone or distribute to anyone else: a free Apple ID
-  is enough for a 7-day on-device test build from Xcode; an
-  [Apple Developer Program](https://developer.apple.com/programs/) membership
-  ($99/yr) is required for TestFlight or the App Store.
-
-**Steps**
-
-```bash
-cd urgeaway
-
-# 1. install the Capacitor CLI + iOS runtime (already in package.json)
-npm install
-
-# 2. bundle the native plugin bridges (notifications, push, auth, screen
-#    pinning) — the CI workflow does this automatically; running it
-#    locally too means `npx cap open ios` has everything it needs
-npx esbuild www/js/notifications-entry.js --bundle --outfile=www/js/notifications-bundle.js --format=iife
-npx esbuild www/js/push-entry.js --bundle --outfile=www/js/push-bundle.js --format=iife
-npx esbuild www/js/auth-entry.js --bundle --outfile=www/js/auth-bundle.js --format=iife
-npx esbuild www/js/screenpinning-entry.js --bundle --outfile=www/js/screenpinning-bundle.js --format=iife
-
-# 3. generate the native iOS project (creates an /ios folder)
-npx cap add ios
-
-# 4. copy www/ into the native project
-npx cap sync ios
-
-# 5. open it in Xcode
-npx cap open ios
-#    → pick a Simulator or your plugged-in iPhone as the run destination
-#    → for your own device: Xcode ▸ Settings ▸ Accounts, sign in with your
-#      Apple ID, then in the project's Signing & Capabilities tab pick
-#      your personal team — Xcode generates a free signing certificate
-#    → press ▶ to build and run
-```
-
-Any time you change files in `www/`, re-run `npx cap sync ios` before
-rebuilding.
-
-**GitHub Actions (`.github/workflows/build-ios.yml`)** builds an
-**unsigned Simulator** version on every push, the iOS equivalent of the
-Android workflow's debug APK, and uploads it as an artifact you can
-download and drag into a local Simulator. It needs no Apple account or
-secrets. It cannot produce something installable on a real iPhone —
-Apple requires signing for that regardless of who builds it or where.
-
-**For TestFlight or the App Store** (real devices, real signing):
-1. Enroll in the [Apple Developer Program](https://developer.apple.com/programs/enroll/).
-2. In Xcode, set your Team under Signing & Capabilities and let it
-   manage signing, or create an explicit App ID + provisioning profile
-   in the [developer portal](https://developer.apple.com/account/resources/identifiers/list).
-3. Archive: Xcode ▸ Product ▸ Archive, then use the Organizer window's
-   "Distribute App" to upload to App Store Connect / TestFlight.
-4. To automate this step in CI instead, you'd add your distribution
-   certificate + provisioning profile as GitHub Actions secrets and swap
-   the workflow's Simulator build for `xcodebuild archive` + `exportArchive`
-   — a good next step once you have a Developer account, not something
-   that can be pre-wired without your Apple credentials.
-
-### iOS's Urge Lock: one real platform difference
-
-Android's Screen Pinning can be started by the app itself
-(`Activity#startLockTask()`), which is what the Android build does. Apple
-does not expose an equivalent public API — **no third-party app can
-programmatically start iOS's closest equivalent, Guided Access.** That's
-an Apple platform restriction, not something missing from this build.
-
-So on iOS, `capacitor-plugins/screen-pinning/ios/` reads whether Guided
-Access is already active (`UIAccessibility.isGuidedAccessEnabled`) rather
-than starting it, and `openPinningSettings()` opens the Settings app (the
-furthest a third-party app is allowed to deep-link) while the in-app copy
-explains the rest: Settings → Accessibility → Guided Access → turn it on
-once, then triple-click the side/top button while inside UrgeAway to
-actually lock to it. If someone hasn't done that, Urge Lock still runs its
-full timer and distraction loop exactly like the Android fallback path —
-it just isn't OS-pinned. Nothing in the shared JS (`urgelock.js`,
-`screens.js`) had to branch on this beyond swapping the copy — the native
-plugin resolves the same `{ started, reason }` / `{ pinned }` shapes on
-both platforms.
 
 ## What's deliberately MVP / stubbed for later
 

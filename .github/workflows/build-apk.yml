@@ -1,0 +1,83 @@
+name: Build Android APK
+
+# Builds a debug UrgeAway.apk in GitHub's cloud whenever you push to main,
+# or whenever you trigger it manually from the Actions tab. No local
+# Android SDK required — this is the whole point.
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Java (required by Gradle/Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install project dependencies
+        run: npm install
+
+      - name: Bundle native plugin bridges (notifications, push, auth)
+        run: |
+          npx esbuild www/js/notifications-entry.js --bundle --outfile=www/js/notifications-bundle.js --format=iife
+          npx esbuild www/js/push-entry.js --bundle --outfile=www/js/push-bundle.js --format=iife
+          npx esbuild www/js/auth-entry.js --bundle --outfile=www/js/auth-bundle.js --format=iife
+          npx esbuild www/js/analytics-entry.js --bundle --outfile=www/js/analytics-bundle.js --format=iife
+          npx esbuild www/js/screenpinning-entry.js --bundle --outfile=www/js/screenpinning-bundle.js --format=iife
+          npx esbuild www/js/applock-entry.js --bundle --outfile=www/js/applock-bundle.js --format=iife
+
+      - name: Add the Android platform
+        run: npx cap add android
+
+      - name: Add Firebase config (Auth + Cloud Messaging) if present
+        run: |
+          if [ -f "firebase/google-services.json" ]; then
+            cp firebase/google-services.json android/app/google-services.json
+            sed -i "0,/dependencies {/s//dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'/" android/build.gradle
+            echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+            echo "Firebase config applied."
+          else
+            echo "No firebase/google-services.json found — skipping Firebase setup for this build."
+          fi
+        shell: bash
+
+      - name: Install the notification status-bar icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp resources/android/ic_stat_urgeaway.png android/app/src/main/res/drawable/ic_stat_urgeaway.png
+          sed -i 's#</application>#    <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_urgeaway" />\n  </application>#' android/app/src/main/AndroidManifest.xml
+
+      - name: Sync web app into the Android project
+        run: npx cap sync android
+
+      - name: Generate app icons from resources/icon.png
+        run: npx capacitor-assets generate --android
+
+      - name: Use a stable debug keystore (keeps SHA-1 fixed across builds)
+        run: |
+          mkdir -p ~/.android
+          cp android-signing/debug.keystore ~/.android/debug.keystore
+
+      - name: Build the debug APK
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+
+      - name: Upload the APK so you can download it
+        uses: actions/upload-artifact@v4
+        with:
+          name: UrgeAway-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

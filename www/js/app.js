@@ -56,6 +56,7 @@ const App = (() => {
           // that was still running when the app was last closed, instead of
           // silently dropping the person back on Home.
           UrgeLock.resumeIfActive();
+          maybeShowAnalyticsPrompt();
         }
         // The normal launch flow has now decided what to show — anything
         // that tried to open the Notifications screen before this point
@@ -140,6 +141,21 @@ const App = (() => {
   function completeOnboarding() {
     overlayContainer.innerHTML = '';
     goToTab('home');
+    maybeShowAnalyticsPrompt();
+  }
+
+  // Shown once, ever — see Data.isAnalyticsPromptShown(). Skipped entirely
+  // if the person has already turned analytics on some other way (e.g.
+  // found the Settings toggle themselves), so this never nags someone
+  // who's already opted in.
+  function maybeShowAnalyticsPrompt() {
+    if (Data.isAnalyticsPromptShown() || Data.getAnalyticsEnabled()) return;
+    overlayContainer.appendChild(renderAnalyticsPrompt((result) => {
+      overlayContainer.innerHTML = '';
+      if (result && result.goToPrivacy) {
+        goToTab('settings', { highlightAnalytics: true });
+      }
+    }));
   }
 
   function goToTab(tab, opts) {
@@ -208,6 +224,12 @@ const App = (() => {
     overlayContainer.appendChild(renderUserDashboard());
   }
 
+  function openLockInMode() {
+    haptic();
+    overlayContainer.innerHTML = '';
+    overlayContainer.appendChild(renderLockInMode());
+  }
+
   function openNotifications() {
     haptic();
     overlayContainer.innerHTML = '';
@@ -270,6 +292,7 @@ const App = (() => {
     openSupport,
     openAccount,
     openUserDashboard,
+    openLockInMode,
     openNotifications,
     handleNotificationTapped,
     syncNotificationHistory,

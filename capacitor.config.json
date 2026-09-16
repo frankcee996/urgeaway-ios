@@ -9,8 +9,7 @@
   },
   "ios": {
     "backgroundColor": "#0c1626",
-    "contentInset": "always",
-    "scheme": "UrgeAway"
+    "contentInset": "always"
   },
   "server": {
     "androidScheme": "https",

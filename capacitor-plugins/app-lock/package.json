@@ -1,0 +1,20 @@
+{
+  "name": "urgeaway-app-lock",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local Capacitor plugin: Lock In Mode for UrgeAway. Uses Android's standard, user-granted Accessibility Service API (window-state change events + the documented GLOBAL_ACTION_HOME action) to send a chosen app back to the Home screen for a duration the person sets themselves. Does NOT use Device Owner/Device Policy Manager, ADB, root, or PackageManager#setComponentEnabledSetting() on another app's components (that call only works on an app's own components on stock Android). Reads no on-screen content and never hides or blocks the system Accessibility toggle that turns it off.",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "files": [
+    "android",
+    "src"
+  ],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}

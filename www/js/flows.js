@@ -4,7 +4,42 @@
    check-in, and first-run onboarding.
    ========================================================================== */
 
-/* ============================== SPLASH ============================== */
+/* ============================== ANALYTICS PROMPT ============================== */
+/* Shown once, the first time someone reaches Home (after onboarding, and
+   after the login gate so it never competes with that flow). Small popup,
+   not a full takeover — Home stays visible, dimmed, behind it. Tapping
+   "Turn On" does NOT flip the toggle itself: it navigates to Settings and
+   highlights the real control there, so the actual opt-in still happens
+   as one deliberate tap on the toggle, not a tap on this popup. */
+function renderAnalyticsPrompt(onDismiss) {
+  const wrap = fmt(`<div class="popup-backdrop fade-in"></div>`);
+  const card = fmt(`
+    <div class="popup-card">
+      <div class="h1">Help improve UrgeAway?</div>
+      <div class="desc">
+        UrgeAway can share anonymous usage data — just counts of which features get used, like an activity being completed. It never includes your journal entries, never which apps you lock in Lock In Mode, and it's never tied to your identity. It's entirely optional, and off unless you turn it on.
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-block" id="ap-turn-on">Turn On in Settings</button>
+        <button class="btn btn-ghost btn-block" id="ap-not-now">Not now</button>
+      </div>
+    </div>
+  `);
+  wrap.appendChild(card);
+
+  wrap.querySelector('#ap-turn-on').addEventListener('click', () => {
+    Data.setAnalyticsPromptShown();
+    onDismiss({ goToPrivacy: true });
+  });
+  wrap.querySelector('#ap-not-now').addEventListener('click', () => {
+    Data.setAnalyticsPromptShown();
+    onDismiss({ goToPrivacy: false });
+  });
+
+  return wrap;
+}
+
+
 /* Shown for a moment on every app launch — the swoosh mark draws itself
    from start to end, then fades out. Pure SVG/CSS, no native assets. */
 function renderSplashScreen(onDone) {

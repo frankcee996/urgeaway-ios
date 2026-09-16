@@ -31,6 +31,10 @@ const UrgeLock = (() => {
      to proceed — never starts automatically. */
   function renderConfirm(intensity, onCancel) {
     const durationSec = Data.getUrgeLockDurationSec(intensity);
+    const ios = window.isIOS && isIOS();
+    const explainer = ios
+      ? 'UrgeAway will start a focused timed session. iOS doesn\u2019t let any app lock itself to the screen the way Android does — if you\u2019ve turned on Guided Access (Settings \u2192 Accessibility \u2192 Guided Access), you can triple-click the side button yourself once the session starts to stay locked in.'
+      : 'UrgeAway will start a focused session using Android\u2019s Screen Pinning feature, keeping this screen in front until the timer ends. Screen Pinning stays under your and Android\u2019s control the whole time.';
     const wrap = fmt(`
       <div class="fade-in" style="display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:290px;">
         <div style="width:60px;height:60px;border-radius:50%;background:rgba(52,224,214,0.14);display:flex;align-items:center;justify-content:center;color:var(--focus-cyan);">${NavIcons.lock}</div>
@@ -40,9 +44,7 @@ const UrgeLock = (() => {
           Lock duration: <strong>${durationLabel(durationSec)}</strong>
         </div>
         <div style="color:var(--focus-text-2);font-size:12.5px;text-align:center;line-height:1.5;">
-          ${Platform.isIOS()
-            ? "UrgeAway will start a focused session and, if you\u2019ve turned on Guided Access (Settings \u2192 Accessibility \u2192 Guided Access, then a triple-click), keep this screen in front until the timer ends. Guided Access stays under your and iOS\u2019s control the whole time."
-            : "UrgeAway will start a focused session using Android's Screen Pinning feature, keeping this screen in front until the timer ends. Screen Pinning stays under your and Android's control the whole time."}
+          ${explainer}
         </div>
         <button class="btn btn-primary btn-block" id="ul-start">START URGE LOCK</button>
         <button class="btn btn-ghost btn-block" id="ul-cancel">CANCEL</button>
@@ -65,11 +67,26 @@ const UrgeLock = (() => {
     let session = Data.getUrgeLockSession();
     if (!session || session.status !== 'active') {
       session = Data.startUrgeLockSession(meta.intensity);
+      if (session && window.Analytics) Analytics.logUrgeSessionStarted(meta.intensity);
     }
     if (!session) {
       // Shouldn't happen (only intensities 7-10 map to a duration) — fall
       // back to the normal distraction loop rather than showing nothing.
       return renderFallback(meta);
+    }
+
+    // Fires even if the app gets closed/backgrounded before the timer
+    // ends — which is the normal case here, since staying in the app
+    // isn't required once Screen Pinning (or Guided Access on iOS) is
+    // holding things in place. Re-calling this on a resumed session just
+    // replaces the same scheduled notification, so it's safe to call
+    // every time renderSession runs.
+    if (window.Notifications && Notifications.available()) {
+      Notifications.scheduleCelebration({
+        idSeed: 'urgelock_' + session.id,
+        title: 'Urge Lock complete',
+        atMs: session.endTime,
+      });
     }
 
     const wrap = fmt(`
@@ -97,13 +114,19 @@ const UrgeLock = (() => {
       });
     }
 
-    ScreenPinning.start().then((res) => {
-      if (res && res.started === false && res.reason === 'unavailable') {
-        App.toast(Platform.isIOS()
-          ? "Guided Access isn\u2019t on for this session \u2014 you can set it up in Settings"
-          : "Screen Pinning isn\u2019t set up on this device \u2014 you can turn it on in Settings");
-      }
-    });
+    if (window.isIOS && isIOS()) {
+      // No programmatic pinning API exists on iOS — Guided Access can only
+      // be started by the person themselves (triple-click), never by an
+      // app. The confirm screen already explained this; don't imply
+      // there's an in-app "set it up" path the way Android has.
+      App.toast('Triple-click now if you\u2019ve set up Guided Access');
+    } else {
+      ScreenPinning.start().then((res) => {
+        if (res && res.started === false && res.reason === 'unavailable') {
+          App.toast("Screen Pinning isn\u2019t set up on this device \u2014 you can turn it on in Settings");
+        }
+      });
+    }
 
     runTick();
     tickHandle = setInterval(runTick, 1000);
@@ -118,14 +141,24 @@ const UrgeLock = (() => {
       if (clockEl) clockEl.textContent = formatClock(remainingMs);
       // If the person unpinned manually, Android's the one in control of
       // that — just note it silently and keep the countdown going. No
-      // repeated re-pinning attempts, no crash, nothing forced.
-      if (ScreenPinning.available()) ScreenPinning.isPinned();
+      // repeated re-pinning attempts, no crash, nothing forced. (No such
+      // check on iOS — there's no programmatic pinning state to poll.)
+      if (!(window.isIOS && isIOS()) && ScreenPinning.available()) ScreenPinning.isPinned();
     }
 
     async function finishSession() {
       if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
-      await ScreenPinning.stop();
+      if (!(window.isIOS && isIOS())) await ScreenPinning.stop();
+      // The app is open and about to show the completion screen right
+      // now, so the scheduled system notification for this same moment
+      // would just be a redundant duplicate — cancel it. (If the app had
+      // been closed instead, this code never runs and the notification
+      // fires normally.)
+      if (window.Notifications && Notifications.available()) {
+        Notifications.cancelCelebration('urgelock_' + session.id);
+      }
       Data.completeUrgeLockSession(null);
+      if (window.Analytics) Analytics.logUrgeSessionCompleted();
       showComplete();
     }
 

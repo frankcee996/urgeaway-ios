@@ -4,29 +4,7 @@
    Falls back gracefully when running in a plain browser preview or on any
    build where the plugin isn't present: Urge Lock's timer and distraction
    still run, the phone just won't be pinned to the app.
-
-   The native plugin resolves the SAME { started, reason } / { pinned }
-   shapes on both platforms, so nothing here branches on platform — only
-   the user-facing copy in urgelock.js / screens.js does, via Platform.isIOS().
    ========================================================================== */
-
-const Platform = (() => {
-  function isIOS() {
-    try {
-      return !!(window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'ios');
-    } catch (e) {
-      return false;
-    }
-  }
-  function isAndroid() {
-    try {
-      return !!(window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'android');
-    } catch (e) {
-      return false;
-    }
-  }
-  return { isIOS, isAndroid };
-})();
 
 const ScreenPinning = (() => {
   function available() {

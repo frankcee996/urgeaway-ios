@@ -44,6 +44,11 @@ function iconTileStyle(kind) {
 
 function fmt(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+// Shared platform check — used to hide/adapt features that are Android-only
+// (Google Sign-In has no iOS setup here; Screen Pinning has no iOS API at all).
+function isIOS() {
+  return !!(window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'ios');
+}
 
 /* ---------------- Signature wave (calm, home screen) ---------------- */
 function waveSVG() {
@@ -61,6 +66,17 @@ function waveSVG() {
 }
 
 /* ============================== HOME ============================== */
+function shortRemainingLabel(remainingMs) {
+  if (remainingMs <= 0) return 'unlocking soon';
+  const totalMin = Math.ceil(remainingMs / 60000);
+  if (totalMin < 60) return `${totalMin} min left`;
+  const totalHours = Math.ceil(totalMin / 60);
+  if (totalHours < 24) return `${totalHours} hour${totalHours === 1 ? '' : 's'} left`;
+  const totalDays = Math.ceil(totalHours / 24);
+  if (totalDays < 60) return `${totalDays} day${totalDays === 1 ? '' : 's'} left`;
+  return `${Math.round(totalDays / 30)} months left`;
+}
+
 function renderHome() {
   const today = Data.getTodaySessions();
   const urgeToday = Data.getUrgeSessionsToday().length;
@@ -81,7 +97,7 @@ function renderHome() {
 
   const wrap = fmt(`
     <div class="screen">
-      <div class="screen-fixed">
+      <div class="screen-scroll">
         <div class="topbar" style="padding:var(--space-2) 0 0;display:flex;align-items:center;gap:10px;">
           <button class="icon-btn" id="btn-dashboard" aria-label="Your dashboard" style="width:40px;height:40px;padding:0;overflow:hidden;flex-shrink:0;">${avatarInner}</button>
           <div style="min-width:0;flex:1;">
@@ -105,7 +121,7 @@ function renderHome() {
         <p class="section-title">What do you need right now?</p>
         <div class="option-grid" id="quick-options"></div>
 
-        <div style="flex:1;"></div>
+        <div id="lockin-status-slot"></div>
 
         <p class="section-title">Today</p>
         <div class="stat-row">
@@ -153,6 +169,7 @@ function renderHome() {
     { label: 'Let me write', desc: 'Private journal', icon: NavIcons.write, tint: 'write', action: () => App.goToTab('journal', { openWrite: true }) },
     { label: 'Challenge me', desc: 'Attention task', icon: NavIcons.target, tint: 'challenge', action: () => App.launchActivity(getActivitiesByCategory('challenge')[Math.floor(Math.random() * getActivitiesByCategory('challenge').length)], { fromUrgeMode: false }) },
     { label: 'Reach out', desc: 'One tap message', icon: NavIcons.reachOut, tint: 'write', action: () => App.triggerReachOut() },
+    { label: 'Lock In Mode', desc: 'Block an app for a while', icon: NavIcons.lock, tint: 'challenge', action: () => App.openLockInMode() },
   ];
   const grid = wrap.querySelector('#quick-options');
   quickOptions.forEach((opt, idx) => {
@@ -163,6 +180,27 @@ function renderHome() {
     card.addEventListener('click', opt.action);
     grid.appendChild(card);
   });
+
+  if (window.AppLock && AppLock.available()) {
+    AppLock.getLockedApps().then((locks) => {
+      if (!locks.length) return;
+      const slot = wrap.querySelector('#lockin-status-slot');
+      if (!slot) return;      const soonest = locks.slice().sort((a, b) => a.unlockAt - b.unlockAt)[0];
+      const remainingMs = soonest.unlockAt - Date.now();
+      const label = shortRemainingLabel(remainingMs);
+      const strip = fmt(`
+        <button class="card card-tap" style="margin-top:var(--space-2);border-color:rgba(242,197,114,0.28);display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:var(--space-3);">
+          <div class="icon" style="${iconTileStyle('challenge')}width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${NavIcons.lock}</div>
+          <div style="min-width:0;">
+            <div style="font-weight:700;font-size:13px;">${locks.length} app${locks.length === 1 ? '' : 's'} locked in</div>
+            <div style="color:var(--text-2);font-size:11px;">Next unlock: ${label}</div>
+          </div>
+        </button>
+      `);
+      strip.addEventListener('click', () => App.openLockInMode());
+      slot.appendChild(strip);
+    });
+  }
 
   return wrap;
 }
@@ -451,6 +489,7 @@ const SETTINGS_MENU = [
       { key: 'appearance', title: 'Appearance', desc: 'Light, dark, or match your device', icon: NavIcons.palette, tint: 'calm' },
       { key: 'notifications', title: 'Notifications & Reminders', desc: 'Gentle nudges, haptics, custom reminders', icon: NavIcons.bell, tint: 'challenge' },
       { key: 'urge-lock', title: 'Urge Lock', desc: 'Screen Pinning setup for 7-10 intensity urges', icon: NavIcons.lock, tint: 'distract' },
+      { key: 'lock-in-mode', title: 'Lock In Mode', desc: 'Block chosen apps for days, months, or years', icon: NavIcons.shield, tint: 'challenge', action: 'openLockInMode' },
     ],
   },
   {
@@ -479,6 +518,7 @@ const SETTINGS_MENU = [
 function renderSettingsTab(opts) {
   if (opts && opts.highlightNotif) settingsSubview = 'notifications';
   else if (opts && opts.highlightReachOut) settingsSubview = 'reach-out';
+  else if (opts && opts.highlightAnalytics) settingsSubview = 'privacy-data';
   else if (!(opts && opts.__refresh)) settingsSubview = null; // fresh navigation to the tab lands on the menu
 
   return settingsSubview ? renderSettingsSubview(settingsSubview, opts) : renderSettingsMenu();
@@ -515,6 +555,7 @@ function renderSettingsMenu() {
       row.addEventListener('click', () => {
         if (item.action === 'openSupport') { App.openSupport(); return; }
         if (item.action === 'openDashboard') { App.openUserDashboard(); return; }
+        if (item.action === 'openLockInMode') { App.openLockInMode(); return; }
         if (item.action === 'logout') {
           if (confirm('Sign out of UrgeAway on this device?')) {
             Auth.signOutUser().then(() => { App.toast('Signed out'); App.refreshTab('settings'); });
@@ -555,7 +596,7 @@ function renderSettingsSubview(key, opts) {
     case 'reasons': renderReasonsSubview(body); break;
     case 'reach-out': renderReachOutSubview(body, opts); break;
     case 'protecting': renderProtectingSubview(body); break;
-    case 'privacy-data': renderPrivacyDataSubview(body); break;
+    case 'privacy-data': renderPrivacyDataSubview(body, opts); break;
     case 'about': renderAboutSubview(body); break;
     case 'urge-lock': renderUrgeLockSubview(body); break;
     default: break;
@@ -565,24 +606,31 @@ function renderSettingsSubview(key, opts) {
 
 /* ---------------- Urge Lock ---------------- */
 function renderUrgeLockSubview(body) {
+  const ios = window.isIOS && isIOS();
   const node = fmt(`
     <div>
       <p class="section-title" style="margin-top:0;">Urge Lock</p>
       <div class="card" style="color:var(--text-2);font-size:12.5px;line-height:1.5;margin-bottom:var(--space-3);">
-        ${Platform.isIOS()
-          ? "For urges you rate 7 or higher, Urge Lock starts a timed, focused session. If you turn on Guided Access first, it keeps UrgeAway in front while the session runs. Guided Access is controlled by iOS, not UrgeAway \u2014 you always exit it with your own triple-click (+ passcode, if you set one)."
-          : "For urges you rate 7 or higher, Urge Lock starts a timed, focused session and uses Android's built-in Screen Pinning to keep UrgeAway in front while it runs. Screen Pinning is controlled by Android, not UrgeAway \u2014 you can always exit it the way your phone documents."}
+        ${ios
+          ? 'For urges you rate 7 or higher, Urge Lock starts a timed, focused session. iOS doesn\u2019t let any app lock itself to the screen \u2014 only you can do that, using Apple\u2019s Guided Access. UrgeAway can\u2019t turn it on or off for you.'
+          : 'For urges you rate 7 or higher, Urge Lock starts a timed, focused session and uses Android\'s built-in Screen Pinning to keep UrgeAway in front while it runs. Screen Pinning is controlled by Android, not UrgeAway \u2014 you can always exit it the way your phone documents.'}
       </div>
       <p class="section-title">Status</p>
       <div class="card">
         <div class="list-row">
           <div>
             <div class="label" id="ul-status-label">Checking\u2026</div>
-            <div class="desc">${Platform.isIOS() ? "iOS's Guided Access" : "Android's Screen Pinning / App Pinning"}</div>
+            <div class="desc">${ios ? 'Apple\u2019s Guided Access' : 'Android\u2019s Screen Pinning / App Pinning'}</div>
           </div>
         </div>
       </div>
-      <button class="btn btn-secondary btn-block" id="ul-setup-btn" style="margin-top:var(--space-3);">SET UP URGE LOCK</button>
+      <button class="btn btn-secondary btn-block" id="ul-setup-btn" style="margin-top:var(--space-3);">${ios ? 'HOW TO TURN ON GUIDED ACCESS' : 'SET UP URGE LOCK'}</button>
+      ${ios ? `<div class="card" id="ul-ios-steps" style="margin-top:var(--space-3);color:var(--text-2);font-size:12.5px;line-height:1.6;display:none;">
+        1. Open the iPhone <strong>Settings</strong> app<br/>
+        2. Go to <strong>Accessibility \u2192 Guided Access</strong> and turn it on<br/>
+        3. Set a Guided Access passcode<br/>
+        4. Whenever you start Urge Lock in UrgeAway, triple-click the side (or Home) button to lock yourself into the app for the session
+      </div>` : ''}
     </div>
   `);
   body.appendChild(node);
@@ -591,6 +639,10 @@ function renderUrgeLockSubview(body) {
   function refreshStatus() {
     const label = node.querySelector('#ul-status-label');
     const btn = node.querySelector('#ul-setup-btn');
+    if (ios) {
+      label.textContent = Data.isUrgeLockSetupDone() ? 'You\u2019ve reviewed the steps' : 'Manual — set up in iPhone Settings';
+      return;
+    }
     if (!ScreenPinning.available()) {
       label.textContent = 'Unavailable in this preview';
       btn.classList.add('hidden');
@@ -602,9 +654,14 @@ function renderUrgeLockSubview(body) {
   }
 
   node.querySelector('#ul-setup-btn').addEventListener('click', async () => {
-    App.toast(Platform.isIOS()
-      ? 'Opening Settings\u2026 look for Accessibility \u2192 Guided Access'
-      : 'Opening Android Security settings\u2026 look for App pinning');
+    if (ios) {
+      const steps = node.querySelector('#ul-ios-steps');
+      if (steps) steps.style.display = steps.style.display === 'none' ? 'block' : 'none';
+      Data.setUrgeLockSetupDone();
+      refreshStatus();
+      return;
+    }
+    App.toast('Opening Android Security settings\u2026 look for App pinning');
     await ScreenPinning.openPinningSettings();
     Data.setUrgeLockSetupDone();
     refreshStatus();
@@ -920,7 +977,7 @@ function renderProtectingCard(wrap) {
 }
 
 /* ---------------- Privacy & Data ---------------- */
-function renderPrivacyDataSubview(body) {
+function renderPrivacyDataSubview(body, opts) {
   const node = fmt(`
     <div>
       <p class="section-title" style="margin-top:0;">Privacy</p>
@@ -933,9 +990,39 @@ function renderPrivacyDataSubview(body) {
         <div class="list-row"><div class="label">Export data</div><button class="btn-ghost btn" id="btn-export">Export</button></div>
         <div class="list-row"><div class="label" style="color:var(--coral);">Clear all data</div><button class="btn-ghost btn" id="btn-clear" style="border-color:rgba(239,139,111,0.4);color:var(--coral);">Clear</button></div>
       </div>
+
+      <p class="section-title">Help improve UrgeAway</p>
+      <div class="card" id="card-analytics">
+        <div class="list-row" id="row-analytics">
+          <div>
+            <div class="label">Share anonymous usage data</div>
+            <div class="desc">Off by default. If on, UrgeAway sends anonymous counts of which features get used (e.g. "an activity was completed") to help us improve the app. Never your journal entries, never which apps you lock in Lock In Mode, and never tied to your identity. Full details in our privacy policy.</div>
+          </div>
+          <button class="toggle ${Data.getAnalyticsEnabled() ? 'on' : ''}" id="toggle-analytics"><span class="knob"></span></button>
+        </div>
+      </div>
     </div>
   `);
   body.appendChild(node);
+
+  node.querySelector('#toggle-analytics').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const next = !btn.classList.contains('on');
+    btn.classList.toggle('on', next);
+    await Analytics.setEnabled(next);
+    App.toast(next ? 'Anonymous usage data on' : 'Anonymous usage data off');
+  });
+
+  if (opts && opts.highlightAnalytics) {
+    const card = node.querySelector('#card-analytics');
+    if (card) {
+      setTimeout(() => {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('highlight-pulse');
+        setTimeout(() => card.classList.remove('highlight-pulse'), 3200);
+      }, 150);
+    }
+  }
 
   node.querySelector('#btn-export').addEventListener('click', () => {
     const data = JSON.stringify(Data.exportAll(), null, 2);

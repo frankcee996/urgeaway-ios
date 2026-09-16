@@ -72,6 +72,11 @@ const Auth = (() => {
 
   async function signInGoogle() {
     if (!available()) return { ok: false, reason: 'unsupported' };
+    // Defensive backstop — the button that calls this is already hidden on
+    // iOS in account.js, since there's no iOS Google auth setup here.
+    if (window.isIOS && isIOS()) {
+      return { ok: false, reason: 'unsupported', message: 'Google Sign-In isn\u2019t available on iOS in this app.' };
+    }
     const { FirebaseAuthentication } = window.CapAuth;
     try {
       const res = await FirebaseAuthentication.signInWithGoogle();

@@ -65,6 +65,10 @@ const Data = (() => {
     PROFILE_PIC: 'profile_pic', // base64 data URL, stored locally only — never uploaded
     NOTIF_HISTORY: 'notif_history', // last 10 { id, title, body, ts }, newest first
     NOTIF_LAST_VIEWED: 'notif_last_viewed', // timestamp the notification bell page was last opened
+    NOTIF_LAST_SYNC: 'notif_last_sync', // timestamp last checked for scheduled reminders that should have fired by now
+    MSG_SHUFFLE: 'msg_shuffle_queues', // { [kind]: number[] } remaining shuffled message-pool indices, per kind
+    ANALYTICS_ENABLED: 'analytics_enabled', // opt-in flag for anonymous usage analytics — see analytics.js
+    ANALYTICS_PROMPT_SHOWN: 'analytics_prompt_shown', // one-time first-launch nudge, see app.js maybeShowAnalyticsPrompt
   };
 
   // Urge Lock duration mapping — intensity determines duration, never a
@@ -113,6 +117,11 @@ const Data = (() => {
     sessions.push(entry);
     Storage.set(KEYS.SESSIONS, sessions);
     updateStreak();
+    // Urge Lock already logs its own dedicated event (see urgelock.js) —
+    // skip it here so it isn't double-counted under both names.
+    if (window.Analytics && entry.category !== 'urge-lock') {
+      Analytics.logActivityCompleted(entry.category || entry.activityId || 'unknown');
+    }
     return entry;
   }
 
@@ -467,6 +476,49 @@ const Data = (() => {
     const lastViewed = getNotifLastViewed();
     return getNotifHistory().filter((n) => n.ts > lastViewed).length;
   }
+  function getNotifLastSync() {
+    return Storage.get(KEYS.NOTIF_LAST_SYNC, 0);
+  }
+  function setNotifLastSync(ts) {
+    Storage.set(KEYS.NOTIF_LAST_SYNC, ts);
+  }
+
+  // Opt-in, defaults false — see analytics.js for exactly what this
+  // gates and what it deliberately never sends.
+  function getAnalyticsEnabled() {
+    return Storage.get(KEYS.ANALYTICS_ENABLED, false);
+  }
+  function setAnalyticsEnabled(enabled) {
+    Storage.set(KEYS.ANALYTICS_ENABLED, !!enabled);
+  }
+  function isAnalyticsPromptShown() {
+    return Storage.get(KEYS.ANALYTICS_PROMPT_SHOWN, false);
+  }
+  function setAnalyticsPromptShown() {
+    Storage.set(KEYS.ANALYTICS_PROMPT_SHOWN, true);
+  }
+
+  // Pulls the next index from a persisted shuffled queue for the given
+  // "kind" (e.g. one queue per message pool). Every index in the pool
+  // is used exactly once before the queue reshuffles and starts a new
+  // pass — so a 20-message pool can't repeat a message until the other
+  // 19 have all shown at least once, and this survives app restarts
+  // since the queue itself is what's persisted (not just a counter).
+  function nextShuffledIndex(kind, poolSize) {
+    const all = Storage.get(KEYS.MSG_SHUFFLE, {});
+    let queue = all[kind];
+    if (!Array.isArray(queue) || !queue.length) {
+      queue = Array.from({ length: poolSize }, (_, i) => i);
+      for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = queue[i]; queue[i] = queue[j]; queue[j] = tmp;
+      }
+    }
+    const index = queue.shift();
+    all[kind] = queue;
+    Storage.set(KEYS.MSG_SHUFFLE, all);
+    return index;
+  }
 
   function exportAll() {
     return {
@@ -540,5 +592,12 @@ const Data = (() => {
     getNotifLastViewed,
     markNotifViewed,
     getUnreadNotifCount,
+    getNotifLastSync,
+    setNotifLastSync,
+    nextShuffledIndex,
+    getAnalyticsEnabled,
+    setAnalyticsEnabled,
+    isAnalyticsPromptShown,
+    setAnalyticsPromptShown,
   };
 })();
