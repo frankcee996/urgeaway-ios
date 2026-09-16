@@ -1,0 +1,32 @@
+{
+  "name": "urgeaway",
+  "version": "1.0.0",
+  "description": "UrgeAway — Don't fight the moment. Shift it.",
+  "private": true,
+  "scripts": {
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "cd android && ./gradlew assembleDebug",
+    "ios:add": "npx cap add ios",
+    "ios:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/local-notifications": "^6.1.0",
+    "@capacitor/push-notifications": "^6.0.3",
+    "@capacitor-firebase/authentication": "^6.3.0",
+    "@capacitor-firebase/analytics": "^6.3.0",
+    "firebase": "^10.14.1",
+    "urgeaway-screen-pinning": "file:./capacitor-plugins/screen-pinning",
+    "urgeaway-app-lock": "file:./capacitor-plugins/app-lock"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/assets": "^3.0.5",
+    "esbuild": "^0.23.1"
+  }
+}

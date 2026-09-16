@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>UrgeAway</title>
+  <meta name="description" content="Don't fight the moment. Shift it." />
+  <meta name="theme-color" content="#0c1626" id="meta-theme-color" />
+  <meta name="color-scheme" content="dark light" />
+
+  <!-- Offline-first: no external font/script requests. Everything below is local. -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+</head>
+<body>
+  <div id="app-shell">
+    <div id="screen-container"></div>
+    <div id="overlay-container"></div>
+    <div id="tabbar-container"></div>
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/activities.js"></script>
+  <script src="js/screens.js"></script>
+  <script src="js/distractions.js"></script>
+  <script src="js/flows.js"></script>
+  <script src="js/account.js"></script>
+  <script src="js/dashboard.js"></script>
+  <!-- these *-bundle.js files are generated during the cloud build (esbuild).
+       If you're previewing this raw in a desktop browser without running
+       the build, those requests 404 harmlessly and each module falls back
+       to its "unsupported" state. -->
+  <script src="js/notifications-bundle.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/push-bundle.js"></script>
+  <script src="js/push.js"></script>
+  <script src="js/auth-bundle.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/analytics-bundle.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/screenpinning-bundle.js"></script>
+  <script src="js/screenpinning.js"></script>
+  <script src="js/urgelock.js"></script>
+  <script src="js/applock-bundle.js"></script>
+  <script src="js/applock.js"></script>
+  <script src="js/lockinmode.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

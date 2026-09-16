@@ -1,0 +1,24 @@
+{
+  "appId": "com.ceeenterprise.UrgeAway",
+  "appName": "UrgeAway",
+  "webDir": "www",
+  "backgroundColor": "#0c1626",
+  "android": {
+    "backgroundColor": "#0c1626",
+    "allowMixedContent": false
+  },
+  "ios": {
+    "backgroundColor": "#0c1626",
+    "contentInset": "always"
+  },
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_urgeaway",
+      "iconColor": "#34E0D6"
+    }
+  }
+}
